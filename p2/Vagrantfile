@@ -3,11 +3,9 @@
 
 SERVER_NAME = 'mlabouriS'
 SERVER_IP = '192.168.56.110'
-AGENT_NAME = 'mlabouriSW'
-AGENT_IP = '192.168.56.111'
 
-MEM = 1024
-CPU = 1
+MEM = 2048
+CPU = 2
 BOX = "debian/bookworm64"
 
 K3S_TOKEN = ENV["P1__K3S_TOKEN"] || "unsecuretoken"
@@ -15,7 +13,6 @@ K3S_TOKEN = ENV["P1__K3S_TOKEN"] || "unsecuretoken"
 Vagrant.configure("2") do |config|
  	# Generic settings
 	config.vm.box = BOX
-	config.vm.synced_folder '.', '/vagrant', disabled: true
 	config.vm.boot_timeout = 1200
 	config.vm.provider "virtualbox" do |vb|
 		vb.memory = MEM
@@ -25,9 +22,7 @@ Vagrant.configure("2") do |config|
 	# Pre provision script
 	config.vm.provision "shell", path: "scripts/prep.sh", env: {
 		SERVER__NAME:SERVER_NAME,
-		SERVER__IP:SERVER_IP,
-		AGENT__NAME:AGENT_NAME,
-		AGENT__IP:AGENT_IP
+		SERVER__IP:SERVER_IP
 	}
 	
 	#Server
@@ -37,23 +32,13 @@ Vagrant.configure("2") do |config|
 		server.vm.provider "virtualbox" do |vb|
 			vb.name = SERVER_NAME
 		end
-		server.vm.provision "shell", path: "scripts/k3s_server.sh", env: {
-			SERVER__IP: SERVER_IP,
-			K3S_TOKEN:K3S_TOKEN
-		}
-	end
 
-	#Server Worker
-	config.vm.define AGENT_IP do |server|
-		server.vm.hostname = AGENT_NAME
-		server.vm.network "private_network", ip: AGENT_IP
-		server.vm.provider "virtualbox" do |vb|
-			vb.name = AGENT_NAME
-		end
 		server.vm.provision "shell", path: "scripts/k3s_worker.sh", env: {
 			SERVER__IP: SERVER_IP,
-			AGENT__IP:AGENT_IP,
 			K3S_TOKEN:K3S_TOKEN
 		}
+		
+		# Apply kube files
+    	server.vm.provision "shell", path: "scripts/run.sh"
 	end
 end
